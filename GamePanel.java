@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 public class GamePanel extends JPanel {
 
@@ -16,13 +17,13 @@ public class GamePanel extends JPanel {
     private Image backgroundImage;
     private Image topLeftImage;
 
-    // Tetromino shapes
+    private Timer gravityTimer;  // <<< ADDED
+
     private final int[][][] SHAPES = {
         { {1, 1, 1, 1} },          // I shape
         { {1, 1}, {1, 1} },        // O shape
         { {0, 1, 0}, {1, 1, 1} },  // T shape
-        { {0, 1, 1},
-          {1, 1, 0} },  // S shape
+        { {0, 1, 1},{1, 1, 0} },  // S shape
         { {1, 1, 0}, {0, 1, 1} },  // Z shape
         { {1, 0, 0}, {1, 1, 1} },  // J shape
         { {0, 0, 1}, {1, 1, 1} }   // L shape
@@ -46,6 +47,73 @@ public class GamePanel extends JPanel {
 
         // Spawn first Tetromino
         spawnBlock();
+
+        // ----------------------------
+        //   AUTO FALL TIMER (Gravity)
+        // ----------------------------
+        gravityTimer = new Timer(550, e -> moveDown());  // falls every 550ms
+        gravityTimer.start();
+    }
+
+    // -----------------------
+    // MOVE DOWN (Gravity)
+    // -----------------------
+    private void moveDown() {
+        if (currentBlock == null) return;
+
+        if (!canMove(currentBlock.getX(), currentBlock.getY() + 1)) {
+            lockBlock();
+            spawnBlock();
+            return;
+        }
+
+        currentBlock.setPosition(currentBlock.getX(), currentBlock.getY() + 1);
+        repaint();
+    }
+
+    // -----------------------
+    // COLLISION CHECK
+    // -----------------------
+    private boolean canMove(int newX, int newY) {
+        int[][] shape = currentBlock.getShape();
+
+        for (int r = 0; r < shape.length; r++) {
+            for (int c = 0; c < shape[r].length; c++) {
+
+                if (shape[r][c] == 1) {
+                    int boardX = newX + c;
+                    int boardY = newY + r;
+
+                    // Bottom boundary
+                    if (boardY >= ROWS) return false;
+
+                    // Side boundaries
+                    if (boardX < 0 || boardX >= COLS) return false;
+
+                    // Existing block collision
+                    if (board[boardY][boardX]) return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // --------------------------------------
+    // LOCK TETROMINO INTO THE BOARD
+    // --------------------------------------
+    private void lockBlock() {
+        int[][] shape = currentBlock.getShape();
+        int bx = currentBlock.getX();
+        int by = currentBlock.getY();
+
+        for (int r = 0; r < shape.length; r++) {
+            for (int c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] == 1) {
+                    board[by + r][bx + c] = true;
+                }
+            }
+        }
     }
 
     @Override
@@ -102,8 +170,8 @@ public class GamePanel extends JPanel {
                     if (shape[r][c] == 1) {
                         int drawX = xOffset + (bx + c) * cellSize;
                         int drawY = yOffset + (by + r) * cellSize;
-                        g2d.fillRect(drawX, drawY, cellSize, cellSize);
 
+                        g2d.fillRect(drawX, drawY, cellSize, cellSize);
                         g2d.setColor(Color.BLACK);
                         g2d.drawRect(drawX, drawY, cellSize, cellSize);
                         g2d.setColor(Color.RED);
@@ -131,13 +199,12 @@ public class GamePanel extends JPanel {
     public void spawnBlock() {
         int randomIndex = (int)(Math.random() * SHAPES.length);
         currentBlock = new Tetromino(SHAPES[randomIndex]);
-        currentBlock.setPosition(3, 0);  // spawn top center
+        currentBlock.setPosition(3, 0); // spawn top center
         repaint();
     }
 
-    // Getter
+    // Getter for currentBlock
     public Tetromino getCurrentBlock() {
         return currentBlock;
     }
 }
-
