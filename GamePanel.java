@@ -6,6 +6,7 @@ import java.awt.Image;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import java.awt.event.KeyEvent;
 
 public class GamePanel extends JPanel {
 
@@ -17,13 +18,13 @@ public class GamePanel extends JPanel {
     private Image backgroundImage;
     private Image topLeftImage;
 
-    private Timer gravityTimer;  // <<< ADDED
+    private Timer gravityTimer;  
 
     private final int[][][] SHAPES = {
         { {1, 1, 1, 1} },          // I shape
         { {1, 1}, {1, 1} },        // O shape
         { {0, 1, 0}, {1, 1, 1} },  // T shape
-        { {0, 1, 1},{1, 1, 0} },  // S shape
+        { {0, 1, 1},{1, 1, 0} },   // S shape
         { {1, 1, 0}, {0, 1, 1} },  // Z shape
         { {1, 0, 0}, {1, 1, 1} },  // J shape
         { {0, 0, 1}, {1, 1, 1} }   // L shape
@@ -32,12 +33,10 @@ public class GamePanel extends JPanel {
     public GamePanel() {
         board = new boolean[ROWS][COLS];
 
-        // Background image
         backgroundImage = new ImageIcon(
             "D:\\BS-CS\\BS-CS-3rd-Semester\\DSA by Dr. Syed Qamar Askari Shah\\Project\\Tetris\\src\\images\\background.jpg"
         ).getImage();
 
-        // Top-left image
         topLeftImage = new ImageIcon(
             "D:\\BS-CS\\BS-CS-3rd-Semester\\DSA by Dr. Syed Qamar Askari Shah\\Project\\Tetris\\src\\images\\Tetris_logo.png"
         ).getImage();
@@ -51,8 +50,19 @@ public class GamePanel extends JPanel {
         // ----------------------------
         //   AUTO FALL TIMER (Gravity)
         // ----------------------------
-        gravityTimer = new Timer(550, e -> moveDown());  // falls every 550ms
+        gravityTimer = new Timer(550, e -> moveDown());
         gravityTimer.start();
+
+        // ----------------------------
+        //   key input
+        // ----------------------------
+        addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                handleKeyPress(e.getKeyCode());
+            }
+        });
+        setFocusable(true);
     }
 
     // -----------------------
@@ -69,6 +79,41 @@ public class GamePanel extends JPanel {
 
         currentBlock.setPosition(currentBlock.getX(), currentBlock.getY() + 1);
         repaint();
+    }
+
+    // -----------------------
+    // MOVE LEFT
+    // -----------------------
+    public void moveLeft() {
+        if (currentBlock == null) return;
+        if (canMove(currentBlock.getX() - 1, currentBlock.getY())) {
+            currentBlock.setPosition(currentBlock.getX() - 1, currentBlock.getY());
+            repaint();
+        }
+    }
+
+    // -----------------------
+    // MOVE RIGHT
+    // -----------------------
+    public void moveRight() {
+        if (currentBlock == null) return;
+        if (canMove(currentBlock.getX() + 1, currentBlock.getY())) {
+            currentBlock.setPosition(currentBlock.getX() + 1, currentBlock.getY());
+            repaint();
+        }
+    }
+
+    // -----------------------
+    // HANDLE KEY INPUT
+    // -----------------------
+    public void handleKeyPress(int keyCode) {
+        if (keyCode == KeyEvent.VK_LEFT) {
+            moveLeft();
+        } else if (keyCode == KeyEvent.VK_RIGHT) {
+            moveRight();
+        } else if (keyCode == KeyEvent.VK_DOWN) {
+            moveDown();
+        }
     }
 
     // -----------------------
@@ -116,6 +161,9 @@ public class GamePanel extends JPanel {
         }
     }
 
+    // -----------------------
+    // PAINT METHOD
+    // -----------------------
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -195,15 +243,16 @@ public class GamePanel extends JPanel {
         }
     }
 
-    // Spawn random Tetromino
+    // -----------------------
+    // SPAWN NEW BLOCK
+    // -----------------------
     public void spawnBlock() {
         int randomIndex = (int)(Math.random() * SHAPES.length);
         currentBlock = new Tetromino(SHAPES[randomIndex]);
-        currentBlock.setPosition(3, 0); // spawn top center
+        currentBlock.setPosition(3, 0);
         repaint();
     }
 
-    // Getter for currentBlock
     public Tetromino getCurrentBlock() {
         return currentBlock;
     }
