@@ -12,24 +12,128 @@ public class GamePanel extends JPanel {
 
     private static final int ROWS = 20;
     private static final int COLS = 10;
+    private static int numberOfTotalCleared = 0;
 
     private boolean[][] board;
     private Tetromino currentBlock;
     private Image backgroundImage;
     private Image topLeftImage;
-
-    private Timer gravityTimer;  
-
-    private final int[][][] SHAPES = {
-        { {1, 1, 1, 1} },          // I shape
-        { {1, 1}, {1, 1} },        // O shape
-        { {0, 1, 0}, {1, 1, 1} },  // T shape
-        { {0, 1, 1},{1, 1, 0} },   // S shape
-        { {1, 1, 0}, {0, 1, 1} },  // Z shape
-        { {1, 0, 0}, {1, 1, 1} },  // J shape
-        { {0, 0, 1}, {1, 1, 1} }   // L shape
+    private final Color[] COLORS = {
+        new Color(255, 0, 0),    // Red
+        new Color(0, 255, 0),    // Green
+        new Color(0, 0, 255),    // Blue
+        new Color(255, 255, 0),  // Yellow
+        new Color(255, 165, 0),  // Orange
+        new Color(128, 0, 128),  // Purple
+        new Color(0, 255, 255)   // Cyan
     };
 
+    private Timer gravityTimer;
+    
+    /***********Sadisa***********/
+    private final int[][][] SHAPES = {
+        // I shape horizontal
+        { {1, 1, 1, 1} },
+    
+        // I shape vertical
+        { {1}, {1}, {1}, {1} },
+    
+        // O shape
+        { {1, 1},
+          {1, 1} },
+    
+        // T shape upright
+        { {0, 1, 0},
+          {1, 1, 1} },
+    
+        // T shape upside-down
+        { {1, 1, 1},
+          {0, 1, 0} },
+    
+        // T shape rotated left
+        { {1, 0},
+          {1, 1},
+          {1, 0} },
+    
+        // T shape rotated right
+        { {0, 1},
+          {1, 1},
+          {0, 1} },
+    
+        // S shape horizontal
+        { {0, 1, 1},
+          {1, 1, 0} },
+    
+        // S shape vertical
+        { {0, 1},
+          {1, 1},
+          {1, 0} },
+    
+        // Z shape horizontal
+        { {1, 1, 0},
+          {0, 1, 1} },
+    
+        // Z shape vertical
+        { {1, 0},
+          {1, 1},
+          {0, 1} },
+    
+        // J shape
+        { {1, 0, 0},
+          {1, 1, 1} },
+    
+        // L shape
+        { {0, 0, 1},
+          {1, 1, 1} },
+    
+        // L shape rotated left horizontally
+        { {1, 1, 1},
+          {1, 0, 0} },
+    
+        // L shape rotated right horizontally
+        { {1, 1, 1},
+          {0, 0, 1} },
+
+         // L shape rotated left vertically
+        { {1, 1},
+          {1, 0},
+          {1, 0} },
+
+        // L shape rotated right vertically
+        { {1, 1},
+          {0, 1},
+          {0, 1} },
+
+        // L shape vertically
+        { {1, 0},
+          {1, 0},
+          {1, 1} },
+
+        // L shape flipped vertically
+        { {0, 1},
+          {0, 1},
+          {1, 1} },
+
+        // Square shape vertical
+        { {1, 1},
+          {1, 1},
+          {1, 1} },
+
+        // Square shape horizontal
+        { {1, 1, 1},
+          {1, 1, 1}},
+
+        // Single block
+        { {1} },
+
+        // horizontal 2-cell
+        { {1, 1} },
+
+        // vertical 2-cell
+        { {1},
+          {1} }
+    };
+    
     public GamePanel() {
         board = new boolean[ROWS][COLS];
 
@@ -43,6 +147,7 @@ public class GamePanel extends JPanel {
 
         setPreferredSize(new Dimension(500, 700));
         setBackground(Color.WHITE);
+        /***********Sadisa***********/
 
         // Spawn first Tetromino
         spawnBlock();
@@ -69,7 +174,8 @@ public class GamePanel extends JPanel {
     // MOVE DOWN (Gravity)
     // -----------------------
     private void moveDown() {
-        if (currentBlock == null) return;
+        if (currentBlock == null) 
+            return;
 
         if (!canMove(currentBlock.getX(), currentBlock.getY() + 1)) {
             lockBlock();
@@ -85,7 +191,8 @@ public class GamePanel extends JPanel {
     // MOVE LEFT
     // -----------------------
     public void moveLeft() {
-        if (currentBlock == null) return;
+        if (currentBlock == null) 
+            return;
         if (canMove(currentBlock.getX() - 1, currentBlock.getY())) {
             currentBlock.setPosition(currentBlock.getX() - 1, currentBlock.getY());
             repaint();
@@ -96,7 +203,8 @@ public class GamePanel extends JPanel {
     // MOVE RIGHT
     // -----------------------
     public void moveRight() {
-        if (currentBlock == null) return;
+        if (currentBlock == null) 
+            return;
         if (canMove(currentBlock.getX() + 1, currentBlock.getY())) {
             currentBlock.setPosition(currentBlock.getX() + 1, currentBlock.getY());
             repaint();
@@ -130,13 +238,16 @@ public class GamePanel extends JPanel {
                     int boardY = newY + r;
 
                     // Bottom boundary
-                    if (boardY >= ROWS) return false;
+                    if (boardY >= ROWS) 
+                        return false;
 
                     // Side boundaries
-                    if (boardX < 0 || boardX >= COLS) return false;
+                    if (boardX < 0 || boardX >= COLS) 
+                        return false;
 
                     // Existing block collision
-                    if (board[boardY][boardX]) return false;
+                    if (board[boardY][boardX]) 
+                        return false;
                 }
             }
         }
@@ -159,12 +270,17 @@ public class GamePanel extends JPanel {
                 }
             }
         }
+        clearRows();
+        repaint();
+        clearCols();
+        repaint();
     }
 
     // -----------------------
     // PAINT METHOD
     // -----------------------
     @Override
+    /***********Sadisa***********/
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
@@ -204,6 +320,7 @@ public class GamePanel extends JPanel {
                 g2d.drawRect(xOffset + col * cellSize, yOffset + row * cellSize, cellSize, cellSize);
             }
         }
+        /***********Sadisa***********/
 
         // Draw current Tetromino
         if (currentBlock != null) {
@@ -211,7 +328,7 @@ public class GamePanel extends JPanel {
             int bx = currentBlock.getX();
             int by = currentBlock.getY();
 
-            g2d.setColor(Color.RED);
+            g2d.setColor(currentBlock.getColor());
 
             for (int r = 0; r < shape.length; r++) {
                 for (int c = 0; c < shape[r].length; c++) {
@@ -222,12 +339,13 @@ public class GamePanel extends JPanel {
                         g2d.fillRect(drawX, drawY, cellSize, cellSize);
                         g2d.setColor(Color.BLACK);
                         g2d.drawRect(drawX, drawY, cellSize, cellSize);
-                        g2d.setColor(Color.RED);
+                        g2d.setColor(currentBlock.getColor());
                     }
                 }
             }
         }
 
+    /***********Sadisa***********/
         // Draw rounded border
         g2d.setColor(new Color(0, 102, 168));
         g2d.setStroke(new java.awt.BasicStroke(10));
@@ -242,6 +360,7 @@ public class GamePanel extends JPanel {
             repaint();
         }
     }
+    /***********Sadisa***********/
 
     // -----------------------
     // SPAWN NEW BLOCK
@@ -249,11 +368,79 @@ public class GamePanel extends JPanel {
     public void spawnBlock() {
         int randomIndex = (int)(Math.random() * SHAPES.length);
         currentBlock = new Tetromino(SHAPES[randomIndex]);
+    
+        // Pick a random color from COLORS array
+        int colorIndex = (int)(Math.random() * COLORS.length);
+        currentBlock.setColor(COLORS[colorIndex]);
+    
         currentBlock.setPosition(3, 0);
         repaint();
     }
+    
 
     public Tetromino getCurrentBlock() {
         return currentBlock;
     }
+
+
+    /***********Sadisa***********/
+    // -----------------------
+    // Clearing Rows
+    // -----------------------
+    public void clearRows(){
+        for(int row = 0; row < ROWS; row++){
+            boolean full = true;
+            for(int col = 0; col < COLS; col++){
+                if(board[row][col] == false){
+                    full = false;
+                    break;
+                }
+            }
+            if(full){
+                // Clear the line
+                for(int j = 0; j < COLS; j++){
+                    board[row][j] = false;
+                }
+                // Move all lines above down
+                for(int k = row; k > 0; k--){
+                    for(int j = 0; j < COLS; j++){
+                        board[k][j] = board[k-1][j];
+                    }
+                }
+                // Clear the top line
+                for(int j = 0; j < COLS; j++){
+                    board[0][j] = false;
+                }
+                numberOfTotalCleared++;
+                // Check the same line again
+                clearRows();
+                return;
+            }
+        }
+    }
+    // -----------------------
+    // Clearing Columns
+    // -----------------------
+    public void clearCols() {
+        for (int col = 0; col < COLS; col++) {
+            boolean full = true;
+            for (int row = 0; row < ROWS; row++) {
+                if (!board[row][col]) {
+                    full = false;
+                    break;
+                }
+            }
+            if (full) {
+                // Clear the column
+                for (int row = 0; row < ROWS; row++) {
+                    board[row][col] = false;
+                }
+                numberOfTotalCleared++;
+                // Recursive check again
+                clearCols();
+                return;
+            }
+        }
+    }
+    /***********Sadisa***********/
 }
