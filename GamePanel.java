@@ -13,7 +13,8 @@ public class GamePanel extends JPanel {
     private static final int ROWS = 20;
     private static final int COLS = 10;
     private static int numberOfTotalCleared = 0;
-
+    
+    // private boolean gameOver = false; hafsa
     private boolean[][] board;
     private Tetromino currentBlock;
     private Image backgroundImage;
@@ -131,7 +132,27 @@ public class GamePanel extends JPanel {
 
         // vertical 2-cell
         { {1},
-          {1} }
+          {1} },
+
+        // big L shape rotated
+        { {1, 1, 1},
+          {1, 0, 0},
+          {1, 0, 0} },
+
+        // big J shape rotated
+        { {1, 1, 1},
+          {0, 0, 1},
+          {0, 0, 1} },
+
+        // big J shape
+        { {0, 0, 1},
+          {0, 0, 1},
+          {1, 1, 1} },
+
+        // big L shape
+        { {1, 0, 0},
+          {1, 0, 0},
+          {1, 1, 1} }
     };
     
     public GamePanel() {
@@ -186,6 +207,46 @@ public class GamePanel extends JPanel {
         currentBlock.setPosition(currentBlock.getX(), currentBlock.getY() + 1);
         repaint();
     }
+
+    /*hafsa
+    //will replace with previous one
+    private void moveDown() 
+        {
+        if (currentBlock == null || gameOver)
+        return;
+
+        if (!canMove(currentBlock.getX(), currentBlock.getY() + 1)) 
+        {
+        lockBlock();
+        spawnBlock();
+        return;
+        }
+
+    currentBlock.setPosition(currentBlock.getX(), currentBlock.getY() + 1);
+    repaint();
+    }
+
+
+    public void handleKeyPress(int keyCode) 
+        {
+        if(gameOver)
+        return;
+
+        if(keyCode == KeyEvent.VK_LEFT) 
+        {
+        moveLeft();
+        } 
+        else if(keyCode == KeyEvent.VK_RIGHT) 
+        {
+        moveRight();
+        }
+
+        else if(keyCode == KeyEvent.VK_DOWN) 
+        {
+        moveDown();
+        }
+    }
+    */
 
     // -----------------------
     // MOVE LEFT
@@ -313,7 +374,11 @@ public class GamePanel extends JPanel {
         // Draw board cells
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                g2d.setColor(board[row][col] ? Color.BLUE : new Color(104, 187, 237, 150));
+                if (board[row][col]) {
+                    g2d.setColor(Color.BLUE);
+                } else {
+                    g2d.setColor(new Color(104, 187, 237, 150));
+                }
                 g2d.fillRect(xOffset + col * cellSize, yOffset + row * cellSize, cellSize, cellSize);
 
                 g2d.setColor(new Color(33, 137, 217));
@@ -352,14 +417,6 @@ public class GamePanel extends JPanel {
         int arc = (int) (cellSize * 0.5);
         g2d.drawRoundRect(xOffset, yOffset, COLS * cellSize, ROWS * cellSize, arc, arc);
     }
-
-    // Set cell on board
-    public void setCell(int row, int col, boolean filled) {
-        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
-            board[row][col] = filled;
-            repaint();
-        }
-    }
     /***********Sadisa***********/
 
     // -----------------------
@@ -372,56 +429,107 @@ public class GamePanel extends JPanel {
         // Pick a random color from COLORS array
         int colorIndex = (int)(Math.random() * COLORS.length);
         currentBlock.setColor(COLORS[colorIndex]);
-    
-        currentBlock.setPosition(3, 0);
+
+        int shapeWidth = currentBlock.getShape()[0].length;
+        int randomX = (int) (Math.random() * (COLS - shapeWidth + 1));
+
+        currentBlock.setPosition(randomX, 0);
         repaint();
     }
     
+    //hafsa(canSpawn())
+    /*
+    //will replace it(spawnBlock())
+    public void spawnBlock() {
+    int randomIndex = (int)(Math.random() * SHAPES.length);
+    Tetromino newBlock = new Tetromino(SHAPES[randomIndex]);
+
+    int colorIndex = (int)(Math.random() * COLORS.length);
+    newBlock.setColor(COLORS[colorIndex]);
+
+    newBlock.setPosition(3, 0);
+
+        if(!canSpawn(newBlock)) 
+        {
+        gameOver = true;
+        gravityTimer.stop();
+        repaint();
+        return;
+        }
+
+    currentBlock = newBlock;
+    repaint();
+}
+
+    private boolean canSpawn(Tetromino block){
+    int[][] shape = block.getShape();
+    int bx = block.getX();
+    int by = block.getY();
+
+        for(int r = 0; r < shape.length; r++) 
+        {
+            for (int c = 0; c < shape[r].length; c++) 
+            {
+                if(shape[r][c] == 1) 
+                {
+                int boardX = bx + c;
+                int boardY = by + r;
+
+                if(boardY < 0 || boardY >= ROWS || boardX < 0 || boardX >= COLS)
+                    return false;
+
+                if(board[boardY][boardX])
+                    return false;    
+                }
+            }
+        }
+    return true;
+}
+    */
 
     public Tetromino getCurrentBlock() {
         return currentBlock;
     }
 
-
     /***********Sadisa***********/
     // -----------------------
     // Clearing Rows
     // -----------------------
-    public void clearRows(){
-        for(int row = 0; row < ROWS; row++){
+    public int clearRows() {
+        for (int row = 0; row < ROWS; row++) {
             boolean full = true;
-            for(int col = 0; col < COLS; col++){
-                if(board[row][col] == false){
+            for (int col = 0; col < COLS; col++) {
+                if (board[row][col] == false) {
                     full = false;
                     break;
                 }
             }
-            if(full){
-                // Clear the line
-                for(int j = 0; j < COLS; j++){
+            if (full) {
+                // Clear this row
+                for (int j = 0; j < COLS; j++) {
                     board[row][j] = false;
                 }
-                // Move all lines above down
-                for(int k = row; k > 0; k--){
-                    for(int j = 0; j < COLS; j++){
-                        board[k][j] = board[k-1][j];
+                // Move rows above down
+                for (int k = row; k > 0; k--) {
+                    for (int j = 0; j < COLS; j++) {
+                        board[k][j] = board[k - 1][j];
                     }
                 }
-                // Clear the top line
-                for(int j = 0; j < COLS; j++){
+                // Clear top row
+                for (int j = 0; j < COLS; j++) {
                     board[0][j] = false;
                 }
                 numberOfTotalCleared++;
-                // Check the same line again
-                clearRows();
-                return;
+                return 1 + clearRows(); 
             }
         }
-    }
+        return 0; // Base case
+    }    
+
     // -----------------------
     // Clearing Columns
     // -----------------------
-    public void clearCols() {
+    public int clearCols() {
         for (int col = 0; col < COLS; col++) {
             boolean full = true;
             for (int row = 0; row < ROWS; row++) {
@@ -430,17 +538,17 @@ public class GamePanel extends JPanel {
                     break;
                 }
             }
+    
             if (full) {
-                // Clear the column
+                // Clear column
                 for (int row = 0; row < ROWS; row++) {
                     board[row][col] = false;
                 }
                 numberOfTotalCleared++;
-                // Recursive check again
-                clearCols();
-                return;
+                return 1 + clearCols();
             }
         }
+        return 0; // Base case
     }
     /***********Sadisa***********/
 }
