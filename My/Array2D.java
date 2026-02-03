@@ -21,7 +21,10 @@ public class Array2D {
     }
 
     public boolean isValid(int row, int col){
-        return row >= 0 && row < rows && col >= 0 && col < cols;
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            return true;
+        }
+        return false;
     }
 
     public void set(int row, int col, int value) {
