@@ -1,0 +1,22 @@
+-- Create database
+CREATE DATABASE IF NOT EXISTS tetris;
+USE tetris;
+
+-- Drop old table if needed (optional, only if testing)
+-- DROP TABLE IF EXISTS game_stats;
+
+CREATE TABLE game_stats (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    mode ENUM('EASY','HARD') NOT NULL,
+
+    score INT NOT NULL DEFAULT 0,
+    level INT NOT NULL DEFAULT 1,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+        ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Index for fast leaderboard sorting
+CREATE INDEX idx_score ON game_stats(score);

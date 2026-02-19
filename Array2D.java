@@ -1,34 +1,33 @@
 package My;
 
-public class Array2D {
+public class Array2D<T> {
     private final int rows;
     private final int cols;
-    private int[] arr;
+    private Object[] arr;
 
     public Array2D(int rows, int cols) {
-        if(rows <= 0 || cols <= 0) {
+        if (rows <= 0 || cols <= 0) {
             throw new IllegalArgumentException("Rows and columns must be positive integers");
         }
         this.rows = rows;
         this.cols = cols;
-        this.arr = new int[rows * cols];
+        this.arr = new Object[rows * cols];
     }
-    public int get(int row, int col) {
-        if(!isValid(row, col)){
+
+    @SuppressWarnings("unchecked")
+    public T get(int row, int col) {
+        if (!isValid(row, col)) {
             throw new IndexOutOfBoundsException("Index out of bounds");
         }
-        return arr[index(row, col)];
+        return (T) arr[index(row, col)];
     }
 
-    public boolean isValid(int row, int col){
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
-            return true;
-        }
-        return false;
+    public boolean isValid(int row, int col) {
+        return row >= 0 && row < rows && col >= 0 && col < cols;
     }
 
-    public void set(int row, int col, int value) {
-        if(!isValid(row, col)){
+    public void set(int row, int col, T value) {
+        if (!isValid(row, col)) {
             throw new IndexOutOfBoundsException("Index out of bounds");
         }
         arr[index(row, col)] = value;
@@ -46,11 +45,11 @@ public class Array2D {
         return cols;
     }
 
-    public int length(){
+    public int length() {
         return rows;
     }
 
-    public int totalElements(){
+    public int totalElements() {
         return arr.length;
     }
 }

@@ -14,7 +14,7 @@ public class TetrisFullScreenSplash extends JWindow {
     private boolean growing = true;
     private boolean fadingOut = false;
 
-    private Clip menuMusicClip; // Defined at the top of your class
+    private Clip menuMusicClip;
 
     private void playSound(String filePath, boolean loop) {
         try {
@@ -23,13 +23,12 @@ public class TetrisFullScreenSplash extends JWindow {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundPath);
                 Clip clip = AudioSystem.getClip();
                 clip.open(audioInput);
-                
+
                 if (loop) {
                     clip.loop(Clip.LOOP_CONTINUOUSLY);
-                    // Store this specific clip so stopMusic() can kill it later
-                    this.menuMusicClip = clip; 
+                    this.menuMusicClip = clip;
                 }
-                
+
                 clip.start();
             } else {
                 System.out.println("Can't find sound file: " + filePath);
@@ -45,7 +44,7 @@ public class TetrisFullScreenSplash extends JWindow {
                 menuMusicClip.stop();
             }
             menuMusicClip.close();
-            menuMusicClip = null; // Clear it out to be safe
+            menuMusicClip = null; 
         }
     }
 
@@ -60,18 +59,19 @@ public class TetrisFullScreenSplash extends JWindow {
 
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setBounds(0, 0, screenSize.width, screenSize.height);
-        setBackground(new Color(0, 0, 0, 0)); 
+        setBackground(new Color(0, 0, 0, 0));
         setOpacity(0f);
-        setAlwaysOnTop(true); 
+        setAlwaysOnTop(true);
         playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\splash.wav", true);
 
         JPanel contentPane = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                if (backgroundImage == null) return;
+                if (backgroundImage == null)
+                    return;
                 Graphics2D g2d = (Graphics2D) g.create();
-                
+
                 g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -111,13 +111,15 @@ public class TetrisFullScreenSplash extends JWindow {
             if (!fadingOut) {
                 if (opacity < 1.0f) {
                     opacity += 0.02f;
-                    if (opacity > 1.0f) opacity = 1.0f;
+                    if (opacity > 1.0f)
+                        opacity = 1.0f;
                     setOpacity(opacity);
                 }
             } else {
                 if (opacity > 0.0f) {
                     opacity -= 0.05f;
-                    if (opacity < 0.0f) opacity = 0.0f;
+                    if (opacity < 0.0f)
+                        opacity = 0.0f;
                     setOpacity(opacity);
                 }
             }
@@ -125,19 +127,21 @@ public class TetrisFullScreenSplash extends JWindow {
             // Pulse logic
             if (growing) {
                 scale += 0.0005f;
-                if (scale >= 1.03f) growing = false;
+                if (scale >= 1.03f)
+                    growing = false;
             } else {
                 scale -= 0.0005f;
-                if (scale <= 1.0f) growing = true;
+                if (scale <= 1.0f)
+                    growing = true;
             }
             repaint();
         });
         animTimer.start();
-        
+
         // Sequence: Display for 10seconds -> Fade Out -> Open Menu
         Timer mainTimer = new Timer(10000, e -> {
-            fadingOut = true; 
-            
+            fadingOut = true;
+
             // Give it 500ms to finish fading out before switching
             Timer switchTimer = new Timer(500, ev -> {
                 animTimer.stop();
@@ -157,16 +161,16 @@ public class TetrisFullScreenSplash extends JWindow {
             // 1. Create the 'Wall' (Window)
             JFrame frame = new JFrame("Tetris");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            
+
             // 2. Add your 'Poster' (The GameMenu JPanel)
             GameMenu menu = new GameMenu();
             frame.add(menu);
-            
+
             // 3. Size and Show
             frame.setSize(800, 700);
             frame.setLocationRelativeTo(null); // Center it
             frame.setVisible(true);
-            
+
             System.out.println("Menu Window Created and Panel Added!");
         });
     }

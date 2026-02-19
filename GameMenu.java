@@ -10,10 +10,12 @@ import java.io.File;
 
 public class GameMenu extends JPanel {
     private Image logo, background;
-    private final String[] buttonLabels = {"EASY MODE", "HARD MODE"};
-    private int hoveredIndex = -1; // Tracks which button is hovered (-1 means none)
+    private final String[] buttonLabels = { "EASY MODE", "HARD MODE", "LEADERBOARD" };
+    private int hoveredIndex = -1; 
 
-    private Clip menuMusicClip; // Defined at the top of your class
+    private Clip menuMusicClip;
+
+    private LeaderboardManager manager;
 
     private void playSound(String filePath, boolean loop) {
         try {
@@ -22,13 +24,12 @@ public class GameMenu extends JPanel {
                 AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundPath);
                 Clip clip = AudioSystem.getClip();
                 clip.open(audioInput);
-                
+
                 if (loop) {
                     clip.loop(Clip.LOOP_CONTINUOUSLY);
-                    // Store this specific clip so stopMusic() can kill it later
-                    this.menuMusicClip = clip; 
+                    this.menuMusicClip = clip;
                 }
-                
+
                 clip.start();
             } else {
                 System.out.println("Can't find sound file: " + filePath);
@@ -44,11 +45,16 @@ public class GameMenu extends JPanel {
                 menuMusicClip.stop();
             }
             menuMusicClip.close();
-            menuMusicClip = null; // Clear it out to be safe
+            menuMusicClip = null; 
         }
     }
 
     public GameMenu() {
+        this(new LeaderboardManager());
+
+    }
+    public GameMenu(LeaderboardManager manager) {
+        this.manager = manager;
         logo = new ImageIcon("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\Tetris_logo.png").getImage();
         background = new ImageIcon("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\b6.jpg").getImage();
         playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\damtaro.wav", true);
@@ -72,7 +78,6 @@ public class GameMenu extends JPanel {
                     setCursor(Cursor.getDefaultCursor());
                 }
 
-                // Only repaint if the hover state actually changed
                 if (previousHover != hoveredIndex) {
                     repaint();
                 }
@@ -90,20 +95,26 @@ public class GameMenu extends JPanel {
             public void mousePressed(MouseEvent e) {
                 for (int i = 0; i < buttonLabels.length; i++) {
                     if (getButtonBounds(i).contains(e.getPoint())) {
+
+                        if (i == 2) { 
+                            new LeaderboardUI(manager);
+                            return;
+                        }
+
                         stopMusic();
                         JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(GameMenu.this);
                         topFrame.getContentPane().removeAll();
 
-                        if (i == 0) { // EASY
-                            EasyGamePanel easy = new EasyGamePanel();
+                        if (i == 0) {
+                            EasyGamePanel easy = new EasyGamePanel(manager);
                             topFrame.add(easy);
                             easy.requestFocusInWindow();
-                        } else if (i == 1) { // HARD
-                            HardGamePanel hard = new HardGamePanel();
+                        } else if (i == 1) {
+                            HardGamePanel hard = new HardGamePanel(manager);
                             topFrame.add(hard);
                             hard.requestFocusInWindow();
                         }
-                        
+
                         topFrame.revalidate();
                         topFrame.repaint();
                     }
@@ -118,17 +129,18 @@ public class GameMenu extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        if (background != null) g2d.drawImage(background, 0, 0, getWidth(), getHeight(), this);
+        if (background != null)
+            g2d.drawImage(background, 0, 0, getWidth(), getHeight(), this);
 
         int logoW = (int) (getWidth() * 0.65);
         int logoH = (int) (logoW * 0.5);
         int logoX = (getWidth() - logoW) / 2;
         int logoY = (getHeight() - logoH) / 2;
 
-        if (logo != null) g2d.drawImage(logo, logoX, logoY, logoW, logoH, this);
+        if (logo != null)
+            g2d.drawImage(logo, logoX, logoY, logoW, logoH, this);
 
         for (int i = 0; i < buttonLabels.length; i++) {
-            // Pass the hover state to the drawing method
             drawProfessionalText(g2d, getButtonBounds(i), buttonLabels[i], i == hoveredIndex);
         }
     }
@@ -139,29 +151,27 @@ public class GameMenu extends JPanel {
         int logoY = (getHeight() - logoH) / 2;
         int btnW = logoW / 2, btnH = logoH / 12, spacing = 10;
         int totalHeight = (btnH * 3) + (spacing * 2);
-        int startY = (logoY + logoH) - totalHeight - (int)(logoH * 0.15);
+        int startY = (logoY + logoH) - totalHeight - (int) (logoH * 0.15);
         return new Rectangle((getWidth() - btnW) / 2, startY + (index * (btnH + spacing)), btnW, btnH);
     }
 
     private void drawProfessionalText(Graphics2D g2d, Rectangle rect, String text, boolean isHovered) {
-        // Change font size or style if hovered
-        int fontSize = isHovered ? (int)(rect.height * 0.85) : (int)(rect.height * 0.75);
+     
+        int fontSize = isHovered ? (int) (rect.height * 0.85) : (int) (rect.height * 0.75);
         g2d.setFont(new Font("Century Gothic", isHovered ? Font.BOLD : Font.PLAIN, fontSize));
-        
+
         int tx = rect.x + (rect.width - g2d.getFontMetrics().stringWidth(text)) / 2;
         int ty = rect.y + (rect.height + g2d.getFontMetrics().getAscent()) / 2 - 2;
 
-        // Shadow
         g2d.setColor(new Color(0, 0, 0, 100));
         g2d.drawString(text, tx + 1, ty + 1);
-
-        // Main Text Color (Brighten if hovered)
-        if (isHovered) {
-            g2d.setColor(Color.WHITE); // Highlight color
-        } else {
-            g2d.setColor(new Color(230, 210, 230)); // Default Light Plum
-        }
         
+        if (isHovered) {
+            g2d.setColor(Color.WHITE); 
+        } else {
+            g2d.setColor(new Color(230, 210, 230));
+        }
+
         g2d.drawString(text, tx, ty);
     }
 }

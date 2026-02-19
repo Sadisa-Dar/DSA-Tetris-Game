@@ -4,53 +4,60 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import javax.swing.ImageIcon;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.event.KeyEvent;
 import java.awt.Font;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
-
+import java.awt.BasicStroke;
+import java.awt.FontMetrics;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Path2D; 
 import java.io.File;
+
+
 
 public class HardGamePanel extends JPanel {
 
     private static final int ROWS = 20;
     private static final int COLS = 10;
-    
+
     private boolean gameOver = false;
     private boolean[][] board;
     private Tetromino currentBlock;
     private Image backgroundImage;
     private Image topLeftImage;
+    private int gameId = -1;
 
-    // ---------------- SCORE & LEVEL ----------------
     private int score = 0;
     private int level = 1;
     private static final int LEVEL_UP_SCORE = 500;
 
-    // ---------------- LEADERBOARD ----------------
-    private MyMap<Integer, Integer> leaderboard = new MyMap<>();
-    private int gameCount = 0;
+    private LeaderboardManager manager;
 
-    // ---------------- TIMER ----------------
     private Timer gravityTimer;
     private int gravityDelay = 550;
 
-    // AI Shadow Coordinates
     private int aiBestX = -1;
     private int aiBestY = -1;
 
+    // --- BUTTON COORDINATES (For Game Over Dialog) ---
+    private int btnRestartX, btnRestartY, btnRestartW, btnRestartH;
+    private int btnMenuX, btnMenuY, btnMenuW, btnMenuH;
+
     private final Color[] COLORS = {
-        new Color(255, 0, 0),    // Red
-        new Color(0, 255, 0),    // Green
-        new Color(0, 0, 255),    // Blue
-        new Color(255, 255, 0),  // Yellow
-        new Color(255, 165, 0),  // Orange
-        new Color(128, 0, 128),  // Purple
-        new Color(0, 255, 255)   // Cyan
+            new Color(255, 0, 0), // Red
+            new Color(0, 255, 0), // Green
+            new Color(0, 0, 255), // Blue
+            new Color(255, 255, 0), // Yellow
+            new Color(255, 165, 0), // Orange
+            new Color(128, 0, 128), // Purple
+            new Color(0, 255, 255) // Cyan
     };
 
     private final int[][][] SHAPES = {
@@ -176,7 +183,9 @@ public class HardGamePanel extends JPanel {
           {1, 1, 1} }
     };
 
-    private void playSound(String filePath, boolean loop, float volume) {
+    private Clip menuMusicClip;
+
+    private void playSound(String filePath, boolean loop) {
         try {
             File soundPath = new File(filePath);
             if (soundPath.exists()) {
@@ -184,14 +193,11 @@ public class HardGamePanel extends JPanel {
                 Clip clip = AudioSystem.getClip();
                 clip.open(audioInput);
 
-                if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                    gainControl.setValue(volume); // volume in decibels (e.g., -10.0f)
-                }
-
                 if (loop) {
                     clip.loop(Clip.LOOP_CONTINUOUSLY);
+                    this.menuMusicClip = clip;
                 }
+
                 clip.start();
             } else {
                 System.out.println("Can't find sound file: " + filePath);
@@ -200,35 +206,49 @@ public class HardGamePanel extends JPanel {
             e.printStackTrace();
         }
     }
-    
-    public HardGamePanel() {
+
+    private void stopMusic() {
+        if (menuMusicClip != null) {
+            if (menuMusicClip.isRunning()) {
+                menuMusicClip.stop();
+            }
+            menuMusicClip.close();
+            menuMusicClip = null; 
+        }
+    }
+
+    public HardGamePanel(LeaderboardManager manager) {
+
+        this.manager = manager;
+        String mode = "HARD";
+        this.level = manager.getMaxLevel(mode);
+        this.gravityDelay = Math.max(120, 550 - (level - 1) * 50);
+        this.gameId = manager.createGame(mode, this.level);
+        manager.updateGame(gameId, score, level);
+
         board = new boolean[ROWS][COLS];
 
         backgroundImage = new ImageIcon(
-            "D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\background.jpg"
-        ).getImage();
+                "D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\background.jpg").getImage();
 
         topLeftImage = new ImageIcon(
-            "D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\Tetris_logo.png"
-        ).getImage();
+                "D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\Tetris_logo.png").getImage();
 
         setPreferredSize(new Dimension(500, 700));
         setBackground(Color.WHITE);
 
         // ----------------------------
-        //   AUTO FALL TIMER (Gravity)
+        // AUTO FALL TIMER (Gravity)
         // ----------------------------
         gravityTimer = new Timer(gravityDelay, e -> moveDown());
         gravityTimer.start();
 
-        //Sound
-        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\theme.wav", true, 0.0f);
+        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\theme.wav", true);
 
-        // Spawn first Tetromino
         spawnBlock();
 
         // ----------------------------
-        //   key input
+        // key input
         // ----------------------------
         addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -237,13 +257,23 @@ public class HardGamePanel extends JPanel {
             }
         });
         setFocusable(true);
+
+        // --- MOUSE LISTENER FOR DIALOG BUTTONS ---
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (gameOver) {
+                    handleGameOverClick(e.getX(), e.getY());
+                }
+            }
+        });
     }
 
     // -----------------------
     // MOVE DOWN (Gravity)
     // -----------------------
     private void moveDown() {
-        if (currentBlock == null || gameOver) //hafsa
+        if (currentBlock == null || gameOver)
             return;
 
         if (!canMove(currentBlock.getX(), currentBlock.getY() + 1)) {
@@ -260,7 +290,7 @@ public class HardGamePanel extends JPanel {
     // MOVE LEFT
     // -----------------------
     public void moveLeft() {
-        if (currentBlock == null) 
+        if (currentBlock == null)
             return;
         if (canMove(currentBlock.getX() - 1, currentBlock.getY())) {
             currentBlock.setPosition(currentBlock.getX() - 1, currentBlock.getY());
@@ -272,7 +302,7 @@ public class HardGamePanel extends JPanel {
     // MOVE RIGHT
     // -----------------------
     public void moveRight() {
-        if (currentBlock == null) 
+        if (currentBlock == null)
             return;
         if (canMove(currentBlock.getX() + 1, currentBlock.getY())) {
             currentBlock.setPosition(currentBlock.getX() + 1, currentBlock.getY());
@@ -284,12 +314,6 @@ public class HardGamePanel extends JPanel {
     // HANDLE KEY INPUT
     // -----------------------
     public void handleKeyPress(int keyCode) {
-        if (gameOver) {
-            if (keyCode == KeyEvent.VK_R) {
-                restartGame();
-            }
-            return;
-        }
         if (keyCode == KeyEvent.VK_LEFT) {
             moveLeft();
         } 
@@ -304,7 +328,6 @@ public class HardGamePanel extends JPanel {
     // -----------------------
     // COLLISION CHECK
     // -----------------------
-
     private boolean canMove(int newX, int newY) {
         return canMoveWithShape(currentBlock.getShape(), newX, newY);
     }
@@ -327,7 +350,6 @@ public class HardGamePanel extends JPanel {
         return true;
     }
 
-
     // --------------------------------------
     // LOCK TETROMINO INTO THE BOARD
     // --------------------------------------
@@ -343,77 +365,91 @@ public class HardGamePanel extends JPanel {
                 }
             }
         }
+
+        if (by <= 0) {
+            triggerGameOver();
+            return;
+        }
+
         int cleared = clearRows() + clearCols();
-        if (cleared > 0){
+        if (cleared > 0) {
             addScore(cleared);
-        } 
-        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\lock.wav", false, 1.0f);
+        }
+        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\lock.wav", false);
         repaint();
     }
 
-    // ---------------- SCORE + LEVEL ----------------
+    private void triggerGameOver() {
+        gameOver = true;
+        gravityTimer.stop();
+        stopMusic();
+        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\gameOver.wav", false);
+        repaint();
+    }
+
     private void addScore(int cleared) {
-        if (cleared <= 0) return;
-    
+        if (cleared <= 0)
+            return;
+
         int points;
-        if (cleared == 1){
+        if (cleared == 1) {
             points = 300;
-        }
-        else if (cleared == 2){
+        } else if (cleared == 2) {
             points = 500;
-        }
-        else if (cleared == 3){
+        } else if (cleared == 3) {
             points = 600;
-        }
-        else{
+        } else {
             points = 800;
         }
-    
+
         score += points;
         updateLevel();
+        manager.updateGame(gameId, score, level);
+
     }
 
     private void updateLevel() {
         int newLevel = (score / LEVEL_UP_SCORE) + 1;
-    
-        // Check if the level has actually increased
+
         if (newLevel > level) {
             level = newLevel;
-            playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\score.wav", false, 1.5f);
-            
-            // Update game speed
+            playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\score.wav", false);
+
             int newDelay = Math.max(120, 550 - (level - 1) * 50);
             gravityTimer.setDelay(newDelay);
         }
     }
 
     public void restartGame() {
-        // Reset board
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 board[r][c] = false;
             }
         }
-    
-        // Reset game variables
+
         score = 0;
-        level = 1;
+        playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\theme.wav", true);
+        String mode = "HARD";
+        level = manager.getMaxLevel(mode);
+        gravityDelay = Math.max(120, 550 - (level - 1) * 50);
+
+        gameId = manager.createGame(mode, level);
+        manager.updateGame(gameId, score, level);
+
         currentBlock = null;
         gameOver = false;
-    
-        // Reset AI shadow
+
         aiBestX = -1;
         aiBestY = -1;
-    
-        // Restart gravity timer
+
         if (gravityTimer != null) {
             gravityTimer.setDelay(gravityDelay);
             gravityTimer.start();
         }
-    
+
         spawnBlock();
         repaint();
-    }    
+    }
 
     // -----------------------
     // Dellacherie Implemetaion
@@ -501,7 +537,7 @@ public class HardGamePanel extends JPanel {
             }
         }
         return ROWS;
-    }    
+    }
 
     // -----------------------
     // PAINT METHOD
@@ -518,7 +554,6 @@ public class HardGamePanel extends JPanel {
         int imgHeight = 200;
         g2d.drawImage(topLeftImage, 40, 40, imgWidth, imgHeight, this);
 
-        // -------------------- Calculate cell size --------------------
         int paddingTop = 50;
         int paddingBottom = 50;
         int availableHeight = panelHeight - paddingTop - paddingBottom;
@@ -529,7 +564,6 @@ public class HardGamePanel extends JPanel {
         int xOffset = (panelWidth - (COLS * cellSize)) / 2;
         int yOffset = paddingTop;
 
-        // -------------------- Draw Score & Level --------------------
         Font retroFont = new Font("Arial", Font.BOLD, 32);
         g2d.setFont(retroFont);
         g2d.setColor(new Color(0, 71, 118));
@@ -537,15 +571,12 @@ public class HardGamePanel extends JPanel {
         String scoreText = "SCORE: " + score;
         String levelText = "LEVEL " + level;
 
-        // Level centered above board
         int xLevel = xOffset + (COLS * cellSize) / 2 - g2d.getFontMetrics().stringWidth(levelText) / 2;
         int yLevel = yOffset - 20;
 
-        // Score to the left of board
         int xScore = xOffset - 280;
         int yScore = yOffset + (ROWS * cellSize) / 2;
 
-        // Draw Level and Score with subtle shadow
         for (int dx = 0; dx < 2; dx++) {
             for (int dy = 0; dy < 2; dy++) {
                 g2d.drawString(levelText, xLevel + dx, yLevel + dy);
@@ -553,7 +584,6 @@ public class HardGamePanel extends JPanel {
             }
         }
 
-        // -------------------- Draw board cells --------------------
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 g2d.setColor(board[row][col] ? Color.BLUE : new Color(104, 187, 237, 150));
@@ -564,7 +594,6 @@ public class HardGamePanel extends JPanel {
             }
         }
 
-        // -------------------- Draw current Tetromino --------------------
         if (currentBlock != null) {
             int[][] shape = currentBlock.getShape();
             int bx = currentBlock.getX();
@@ -588,7 +617,6 @@ public class HardGamePanel extends JPanel {
                 }
             }
 
-            // Draw active block
             g2d.setColor(currentBlock.getColor());
             for (int r = 0; r < shape.length; r++) {
                 for (int c = 0; c < shape[r].length; c++) {
@@ -605,64 +633,221 @@ public class HardGamePanel extends JPanel {
             }
         }
 
-        // -------------------- Draw rounded border around board --------------------
         g2d.setColor(new Color(0, 102, 168));
         g2d.setStroke(new java.awt.BasicStroke(10));
         int arc = (int) (cellSize * 0.5);
         g2d.drawRoundRect(xOffset, yOffset, COLS * cellSize, ROWS * cellSize, arc, arc);
 
-        // -------------------- Draw Leaderboard --------------------
-        int lbWidth = 300;
-        int lbHeight = 400;
-        int lbX = xOffset + COLS * cellSize + 100;
-        int lbY = yOffset + 100;
-
-        // -------------------- Draw leaderboard background --------------------
-        g2d.setColor(new Color(104, 187, 237, 150)); // semi-transparent
-        g2d.fillRoundRect(lbX, lbY, lbWidth, lbHeight, 20, 20);
-
-        // -------------------- Draw leaderboard border --------------------
-        g2d.setColor(new Color(0, 102, 168));
-        g2d.setStroke(new java.awt.BasicStroke(10));
-        g2d.drawRoundRect(lbX, lbY, lbWidth, lbHeight, 20, 20);
-
-        // -------------------- Draw title --------------------
-        Font retroFont1 = new Font("Arial", Font.BOLD, 28);
-        g2d.setFont(retroFont1);
-        g2d.setColor(new Color(0, 71, 118));
-        String title = "LEADERBOARD";
-        int titleX = lbX + (lbWidth - g2d.getFontMetrics().stringWidth(title)) / 2;
-        int titleY = lbY + 40;
-        g2d.drawString(title, titleX, titleY);
-
-        // -------------------- Draw scores --------------------
-        g2d.setFont(new Font("Monospaced", Font.BOLD, 20));
-        int lineHeight = 30;
-        int i = 1;
-        int scoreYStart = titleY + 30;
-
-        Node<Integer, Integer> current = leaderboard.getHead();
-        while (current != null && i <= 10) {
-            String text = i + " -> " + current.value;
-            g2d.drawString(text, lbX + 20, scoreYStart + lineHeight * (i - 1));
-            current = current.next;
-            i++;
-        }
-
-        while (i <= 10) {
-            g2d.drawString(i + " -> ----", lbX + 20, scoreYStart + lineHeight * (i - 1));
-            i++;
-        }
-
         if (gameOver) {
-            g2d.setFont(new Font("Arial", Font.BOLD, 28));
-            g2d.setColor(Color.BLACK);
-            String msg = "GAME OVER! Press R to Restart";
-            int msgX = (getWidth() - g2d.getFontMetrics().stringWidth(msg)) / 2;
-            int msgY = getHeight() / 2;
-            g2d.drawString(msg, msgX, msgY);
+            stopMusic();
+            
+            drawGameOverScreen(g2d, panelWidth, panelHeight);
         }
+
+    }
+
+    // ==========================================================
+    //  GAME OVER UI WITH CUSTOM DRAWN ICONS (FROM NEW CODE)
+    // ==========================================================
+    
+    private void drawGameOverScreen(Graphics2D g2, int w, int h) {
+        // 1. Full Screen Blur/Dim
+        g2.setColor(new Color(10, 20, 40, 230)); 
+        g2.fillRect(0, 0, w, h);
         
+        // 2. Main Card Dimensions
+        int dialogW = 320;
+        int dialogH = 380; 
+        int dialogX = (w - dialogW) / 2;
+        int dialogY = (h - dialogH) / 2;
+        
+        // --- Main Card Background ---
+        g2.setColor(new Color(20, 35, 65)); 
+        g2.fillRoundRect(dialogX, dialogY, dialogW, dialogH, 40, 40);
+        
+        // Inner Glow
+        g2.setColor(new Color(60, 100, 160)); 
+        g2.setStroke(new BasicStroke(2));
+        g2.drawRoundRect(dialogX, dialogY, dialogW, dialogH, 40, 40);
+        
+        // 3. "GAME OVER" Text
+        g2.setFont(new Font("Verdana", Font.BOLD, 36));
+        g2.setColor(new Color(255, 100, 0, 50)); // Shadow
+        centerText(g2, "GAME OVER", w, dialogY + 50);
+        g2.setColor(new Color(255, 140, 50));
+        centerText(g2, "GAME OVER", w, dialogY + 48);
+        g2.fillRect(w/2 - 40, dialogY + 60, 80, 4); // Underline
+
+        // 4. Score Box
+        int scoreBoxW = 260;
+        int scoreBoxH = 120;
+        int scoreBoxX = (w - scoreBoxW) / 2;
+        int scoreBoxY = dialogY + 80;
+        
+        g2.setColor(new Color(10, 20, 40)); 
+        g2.fillRoundRect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 20, 20);
+        
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        g2.setColor(new Color(100, 200, 255));
+        centerText(g2, "YOUR SCORE", w, scoreBoxY + 30);
+        
+        g2.setFont(new Font("Arial", Font.BOLD, 48));
+        g2.setColor(Color.WHITE);
+        centerText(g2, String.format("%,d", score), w, scoreBoxY + 80);
+        
+        // Badge
+        int badgeW = 140;
+        int badgeH = 25;
+        int badgeX = (w - badgeW) / 2;
+        int badgeY = scoreBoxY + 105;
+        g2.setColor(new Color(255, 200, 0));
+        g2.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 25, 25);
+        g2.setColor(Color.BLACK);
+        g2.setFont(new Font("Arial", Font.BOLD, 12));
+        drawCenteredString(g2, "Nice Try !", badgeX, badgeY, badgeW, badgeH);
+
+        // ======================================================
+        // 5. BUTTONS (With Custom Icons)
+        // ======================================================
+        
+        // --- RETRY BUTTON ---
+        btnRestartW = 260;
+        btnRestartH = 55;
+        btnRestartX = (w - btnRestartW) / 2;
+        btnRestartY = dialogY + 220;
+        
+        // Background
+        g2.setColor(new Color(0, 150, 150)); // Shadow
+        g2.fillRoundRect(btnRestartX, btnRestartY+4, btnRestartW, btnRestartH, 30, 30);
+        g2.setColor(new Color(0, 230, 230)); // Face
+        g2.fillRoundRect(btnRestartX, btnRestartY, btnRestartW, btnRestartH, 30, 30);
+        
+        // Text & Icon
+        g2.setColor(new Color(0, 40, 40));
+        g2.setFont(new Font("Arial", Font.BOLD, 20));
+        
+        String retryText = "Retry";
+        FontMetrics fm = g2.getFontMetrics();
+        int textW = fm.stringWidth(retryText);
+        int iconSize = 20;
+        int gap = 10;
+        int contentW = textW + gap + iconSize;
+        int startX = btnRestartX + (btnRestartW - contentW) / 2;
+        int textY = btnRestartY + ((btnRestartH - fm.getHeight()) / 2) + fm.getAscent();
+
+        // Draw Text
+        g2.drawString(retryText, startX, textY);
+        
+        // Draw Custom Retry Icon
+        int iconX = startX + textW + gap;
+        int iconY = btnRestartY + (btnRestartH - iconSize) / 2;
+        drawCustomRetryIcon(g2, iconX, iconY, iconSize);
+
+
+        // --- HOME BUTTON ---
+        btnMenuW = 260;
+        btnMenuH = 55;
+        btnMenuX = (w - btnMenuW) / 2;
+        btnMenuY = dialogY + 290;
+        
+        // Background
+        g2.setColor(new Color(30, 30, 40)); // Shadow
+        g2.fillRoundRect(btnMenuX, btnMenuY+4, btnMenuW, btnMenuH, 30, 30);
+        g2.setColor(new Color(60, 70, 80)); // Face
+        g2.fillRoundRect(btnMenuX, btnMenuY, btnMenuW, btnMenuH, 30, 30);
+        
+        // Text & Icon
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 16));
+        
+        String homeText = "Home";
+        fm = g2.getFontMetrics();
+        textW = fm.stringWidth(homeText);
+        contentW = iconSize + gap + textW;
+        startX = btnMenuX + (btnMenuW - contentW) / 2;
+        textY = btnMenuY + ((btnMenuH - fm.getHeight()) / 2) + fm.getAscent();
+        
+        // Draw Custom Home Icon
+        iconX = startX;
+        iconY = btnMenuY + (btnMenuH - iconSize) / 2 - 2;
+        drawCustomHomeIcon(g2, iconX, iconY, iconSize);
+        
+        // Draw Text
+        g2.drawString(homeText, startX + iconSize + gap, textY);
+    }
+    
+    // --- Helper Methods ---
+    
+    private void centerText(Graphics2D g, String text, int panelWidth, int y) {
+        FontMetrics fm = g.getFontMetrics();
+        int x = (panelWidth - fm.stringWidth(text)) / 2;
+        g.drawString(text, x, y);
+    }
+    
+    private void drawCenteredString(Graphics2D g, String text, int rectX, int rectY, int rectW, int rectH) {
+        FontMetrics fm = g.getFontMetrics();
+        int x = rectX + (rectW - fm.stringWidth(text)) / 2;
+        int y = rectY + ((rectH - fm.getHeight()) / 2) + fm.getAscent() - 3;
+        g.drawString(text, x, y);
+    }
+
+    private void drawCustomRetryIcon(Graphics2D g2, int x, int y, int size) {
+        g2.setStroke(new BasicStroke(3));
+        g2.drawArc(x, y, size, size, 45, 270); 
+        // Arrow head
+        Path2D arrow = new Path2D.Double();
+        arrow.moveTo(x + size/2 + 4, y);
+        arrow.lineTo(x + size/2 + 10, y + 6);
+        arrow.lineTo(x + size/2 + 10, y - 6);
+        arrow.closePath();
+        g2.fill(arrow);
+    }
+
+    private void drawCustomHomeIcon(Graphics2D g2, int x, int y, int size) {
+        Path2D roof = new Path2D.Double();
+        roof.moveTo(x + size/2, y);
+        roof.lineTo(x, y + size/2);
+        roof.lineTo(x + size, y + size/2);
+        roof.closePath();
+        g2.fill(roof);
+        
+        int bodyW = size * 2/3;
+        int bodyH = size / 2;
+        int bodyX = x + (size - bodyW)/2;
+        int bodyY = y + size/2;
+        g2.fillRect(bodyX, bodyY, bodyW, bodyH);
+    }
+
+    // ------------------------------------------
+    // HANDLE CLICKS ON DIALOG BOX
+    // ------------------------------------------
+    private void handleGameOverClick(int mouseX, int mouseY) {
+        // Restart Logic
+        if (mouseX >= btnRestartX && mouseX <= btnRestartX + btnRestartW &&
+            mouseY >= btnRestartY && mouseY <= btnRestartY + btnRestartH) {
+            restartGame();
+        }
+
+        // --- HOME / MENU BUTTON LOGIC ---
+        if (mouseX >= btnMenuX && mouseX <= btnMenuX + btnMenuW &&
+            mouseY >= btnMenuY && mouseY <= btnMenuY + btnMenuH) {
+            
+            // 1. Timer Stop
+            if (gravityTimer != null) gravityTimer.stop();
+            
+            // 2. Switch to GameMenu
+            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (topFrame != null) {
+                topFrame.getContentPane().removeAll();
+                
+                GameMenu menu = new GameMenu(); 
+                topFrame.add(menu);
+                
+                topFrame.revalidate();
+                topFrame.repaint();
+                menu.requestFocusInWindow();
+            }
+        }
     }
 
 
@@ -670,62 +855,45 @@ public class HardGamePanel extends JPanel {
     // SPAWN NEW BLOCK
     // -----------------------
     public void spawnBlock() {
-        
-        int randomIndex = (int)(Math.random() * SHAPES.length);
+
+        int randomIndex = (int) (Math.random() * SHAPES.length);
         currentBlock = new Tetromino(SHAPES[randomIndex]);
-    
-        int colorIndex = (int)(Math.random() * COLORS.length);
+
+        int colorIndex = (int) (Math.random() * COLORS.length);
         currentBlock.setColor(COLORS[colorIndex]);
 
         int shapeWidth = currentBlock.getShape()[0].length;
         int randomX = (int) (Math.random() * (COLS - shapeWidth + 1));
 
         currentBlock.setPosition(randomX, 0);
-    
-        // Reset AI shadow
+
         aiBestX = -1;
         aiBestY = -1;
-    
-        // Game Over Check
+
         if (!canMoveWithShape(currentBlock.getShape(), currentBlock.getX(), currentBlock.getY())) {
             gameOver = true;
-            if (gravityTimer != null) gravityTimer.stop();
-    
-            // Only add to leaderboard if score > 0
-            if (score > 0) {
-                addScoreToLeaderboard(score);
-            }        
-    
+            if (gravityTimer != null)
+                gravityTimer.stop();
+
+            manager.updateGame(gameId, score, level);
+
             repaint();
             return;
         }
-    
-        // Compute AI shadow
+
         computeBestAIMove();
-    
-        // Adjust speed based on level
+
         if (gravityTimer != null) {
             int newDelay = Math.max(100, 550 - (level - 1) * 50);
             gravityTimer.setDelay(newDelay);
         }
-    
+
         repaint();
-    }            
+    }
 
     public Tetromino getCurrentBlock() {
         return currentBlock;
     }
-
-    private void addScoreToLeaderboard(int newScore) {
-        gameCount++;
-        leaderboard.putSortedDescending(gameCount, newScore);
-    
-        // Keep only top 10
-        while (leaderboard.size() > 10) {
-            leaderboard.deleteLast();
-        }
-    }
-    
 
     /***********Sadisa***********/
     // -----------------------
@@ -745,15 +913,13 @@ public class HardGamePanel extends JPanel {
     
             if (full) {
                 cleared++;
-                playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false, 1.5f);
-                // Shift all rows above down manually
+                playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false);
                 for (int i = r; i > 0; i--) {
                     for (int j = 0; j < COLS; j++) {
                         board[i][j] = board[i - 1][j]; 
                     }
                 }
     
-                // Clear the top row
                 for (int j = 0; j < COLS; j++) {
                     board[0][j] = false;
                 }
@@ -783,8 +949,7 @@ public class HardGamePanel extends JPanel {
     
             if (full) {
                 cleared++;
-                playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false, 1.5f);
-                // Clear column
+                playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false);
                 for (int r = 0; r < ROWS; r++) {
                     board[r][c] = false;
                 }

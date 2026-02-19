@@ -9,7 +9,6 @@ public class MyMap<K, V extends Comparable<V>> {
         size = 0; 
     }
 
-    // Insert in descending order
     public void putSortedDescending(K key, V value) {
         Node<K, V> newNode = new Node<>(key, value);
 
@@ -23,7 +22,7 @@ public class MyMap<K, V extends Comparable<V>> {
         Node<K, V> prev = null;
 
         while (current != null) {
-            if (value.compareTo(current.value) > 0) { // insert before current
+            if (value.compareTo(current.value) > 0) { 
                 if (prev == null) { 
                     head = newNode;
                     newNode.next = current; 
@@ -39,7 +38,6 @@ public class MyMap<K, V extends Comparable<V>> {
             current = current.next;
         }
 
-        // Insert at tail
         tail.next = newNode;
         tail = newNode;
         size++;
@@ -77,7 +75,7 @@ public class MyMap<K, V extends Comparable<V>> {
         Node<K, V> current = head;
         while (current != null) {
             if(current.key != null && current.key.equals(key)){
-                current.value = value; // replace
+                current.value = value; 
                 return;
             }
             current = current.next;
@@ -88,20 +86,16 @@ public class MyMap<K, V extends Comparable<V>> {
         Node<K, V> current = head;
         while (current != null) {
             if(current.key != null && current.key.equals(key)){
-                current.value = value; // replace
-                return;
+                current.value = value; 
             }
             current = current.next;
         }
         addFirst(key, value);
     }
 
-
-     // add at tail (last)
     public void addLast(K key, V value) {
         Node<K,V> newNode = new Node<>(key, value);
 
-        // empty list
         if(head == null){
             head = newNode;
             tail = newNode;
@@ -113,7 +107,6 @@ public class MyMap<K, V extends Comparable<V>> {
         size++;
     }
 
-    // add at first
     public void addFirst(K key, V value) {
         Node<K,V> newNode = new Node<>(key,value);
 
@@ -128,7 +121,6 @@ public class MyMap<K, V extends Comparable<V>> {
         size++;
     }
 
-    // delete first
     public void deleteFirst(){
         if(head == null) return;
 
@@ -142,7 +134,6 @@ public class MyMap<K, V extends Comparable<V>> {
         size--;
     }
 
-    // Get value by key
     public V get(K key){
         Node<K, V> current = head;
         while (current != null) {
@@ -153,14 +144,14 @@ public class MyMap<K, V extends Comparable<V>> {
         }
         return null;
     }
-    // get first Value
+
     public V getFirstValue(){
         if (head == null){
             return null;
         }
         return head.value;
     }
-    // get last Value
+
     public V getLast(){
         if (tail == null){
             return null;

@@ -3,15 +3,15 @@ import java.awt.Color;
 public class Tetromino {
 
     private int[][] shape;
-    private int x;          // column position on board
-    private int y;          // row position on board
+    private int x;         
+    private int y;         
     private Color color;
 
     public Tetromino(int[][] shape) {
         this.shape = shape;
         this.x = 3;
-        this.y = 0;  // spawn at top
-        this.color = Color.RED; // default color
+        this.y = 0; 
+        this.color = Color.RED; 
     }
 
     public int[][] getShape() {
