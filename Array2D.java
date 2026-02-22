@@ -1,5 +1,3 @@
-package My;
-
 public class Array2D<T> {
     private final int rows;
     private final int cols;

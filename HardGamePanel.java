@@ -28,7 +28,7 @@ public class HardGamePanel extends JPanel {
     private static final int COLS = 10;
 
     private boolean gameOver = false;
-    private boolean[][] board;
+    private Array2D<Boolean> board;
     private Tetromino currentBlock;
     private Image backgroundImage;
     private Image topLeftImage;
@@ -226,7 +226,10 @@ public class HardGamePanel extends JPanel {
         this.gameId = manager.createGame(mode, this.level);
         manager.updateGame(gameId, score, level);
 
-        board = new boolean[ROWS][COLS];
+        board = new Array2D<>(ROWS, COLS);
+        for (int r = 0; r < ROWS; r++)
+            for (int c = 0; c < COLS; c++)
+                board.set(r, c, false);
 
         backgroundImage = new ImageIcon(
                 "D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\images\\background.jpg").getImage();
@@ -342,7 +345,7 @@ public class HardGamePanel extends JPanel {
                     if (boardX < 0 || boardX >= COLS || boardY >= ROWS)
                         return false;
 
-                    if (boardY >= 0 && board[boardY][boardX])
+                    if (boardY >= 0 && board.get(boardY, boardX))
                         return false;
                 }
             }
@@ -361,7 +364,7 @@ public class HardGamePanel extends JPanel {
         for (int r = 0; r < shape.length; r++) {
             for (int c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] == 1) {
-                    board[by + r][bx + c] = true;
+                    board.set(by + r, bx + c, true);
                 }
             }
         }
@@ -423,7 +426,7 @@ public class HardGamePanel extends JPanel {
     public void restartGame() {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
-                board[r][c] = false;
+                board.set(r, c, false);
             }
         }
 
@@ -473,14 +476,14 @@ public class HardGamePanel extends JPanel {
     }
 
     private double evaluatePosition(int x, int y, int[][] shape) {
-        boolean[][] tempBoard = new boolean[ROWS][COLS];
-        for (int r = 0; r < ROWS; r++){
-            tempBoard[r] = board[r].clone();
-        } 
+        Array2D<Boolean> tempBoard = new Array2D<>(ROWS, COLS);
+        for (int r = 0; r < ROWS; r++)
+            for (int c = 0; c < COLS; c++)
+                tempBoard.set(r, c, board.get(r, c));
         for (int r = 0; r < shape.length; r++) {
             for (int c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] == 1){
-                    tempBoard[y + r][x + c] = true;
+                    tempBoard.set(y + r, x + c, true);
                 }
             }
         }
@@ -488,12 +491,12 @@ public class HardGamePanel extends JPanel {
                (-3.2 * countColTransitions(tempBoard)) + (-7.9 * countHoles(tempBoard));
     }
 
-    private int countHoles(boolean[][] b) {
+    private int countHoles(Array2D<Boolean> b) {
         int holes = 0;
         for (int c = 0; c < COLS; c++) {
             boolean blockFound = false;
             for (int r = 0; r < ROWS; r++) {
-                if (b[r][c]){
+                if (b.get(r, c)){
                     blockFound = true;
                 }  
                 else if (blockFound){
@@ -504,11 +507,11 @@ public class HardGamePanel extends JPanel {
         return holes;
     }
 
-    private int countRowTransitions(boolean[][] b) {
+    private int countRowTransitions(Array2D<Boolean> b) {
         int trans = 0;
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS - 1; c++) {
-                if (b[r][c] != b[r][c + 1]){
+                if (!b.get(r, c).equals(b.get(r, c + 1))){
                     trans++;
                 } 
             }
@@ -516,11 +519,11 @@ public class HardGamePanel extends JPanel {
         return trans;
     }
 
-    private int countColTransitions(boolean[][] b) {
+    private int countColTransitions(Array2D<Boolean> b) {
         int trans = 0;
         for (int c = 0; c < COLS; c++) {
             for (int r = 0; r < ROWS - 1; r++) {
-                if (b[r][c] != b[r + 1][c]){
+                if (!b.get(r, c).equals(b.get(r + 1, c))){
                     trans++;
                 } 
             }
@@ -531,7 +534,7 @@ public class HardGamePanel extends JPanel {
     private int getTopOccupiedRow() {
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
-                if (board[r][c]){
+                if (board.get(r, c)){
                     return r;
                 } 
             }
@@ -586,7 +589,7 @@ public class HardGamePanel extends JPanel {
 
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                g2d.setColor(board[row][col] ? Color.BLUE : new Color(104, 187, 237, 150));
+                g2d.setColor(board.get(row, col) ? Color.BLUE : new Color(104, 187, 237, 150));
                 g2d.fillRect(xOffset + col * cellSize, yOffset + row * cellSize, cellSize, cellSize);
 
                 g2d.setColor(new Color(33, 137, 217));
@@ -905,7 +908,7 @@ public class HardGamePanel extends JPanel {
         for (int r = 0; r < ROWS; r++) {
             boolean full = true;
             for (int c = 0; c < COLS; c++) {
-                if (!board[r][c]) {
+                if (!board.get(r, c)) {
                     full = false;
                     break;
                 }
@@ -916,12 +919,12 @@ public class HardGamePanel extends JPanel {
                 playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false);
                 for (int i = r; i > 0; i--) {
                     for (int j = 0; j < COLS; j++) {
-                        board[i][j] = board[i - 1][j]; 
+                        board.set(i, j, board.get(i - 1, j));
                     }
                 }
     
                 for (int j = 0; j < COLS; j++) {
-                    board[0][j] = false;
+                    board.set(0, j, false);
                 }
     
                 r--;
@@ -941,7 +944,7 @@ public class HardGamePanel extends JPanel {
         for (int c = 0; c < COLS; c++) {
             boolean full = true;
             for (int r = 0; r < ROWS; r++) {
-                if (!board[r][c]) {
+                if (!board.get(r, c)) {
                     full = false;
                     break;
                 }
@@ -951,7 +954,7 @@ public class HardGamePanel extends JPanel {
                 cleared++;
                 playSound("D:\\BS-CS\\BS-CS-3rd-Semester\\interface\\src\\sounds\\clear.wav", false);
                 for (int r = 0; r < ROWS; r++) {
-                    board[r][c] = false;
+                    board.set(r, c, false);
                 }
             }
         }
